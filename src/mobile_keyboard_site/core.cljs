@@ -17,16 +17,20 @@
                           }))
 
 ;; Produce a list of works that can be clicked
+;; Include confidence (count)
 (defn word-list
+  "Generate a sequence of span elements, which are each clickable words. When clicked, 
+each element adds itself to text area."
   [data]
   (print "In word list")
   (let [stored-prefix (:prefix data)
         trie   (:trie data)
-        prefix-matches (trie/prefix-matches trie (seq stored-prefix))]
-    (into [:span] (mapv (fn [prefix] [:span {:on-click #(do
-                                                           (swap! app-state assoc :text prefix)
-                                                           (trie/add-to-trie trie %))
-                                              :class "word"} prefix ]) prefix-matches))))
+        prefix-matches (sort-by second > (trie/prefix-matches-confidence trie (seq stored-prefix)))]
+    (into [:span] (mapv (fn [[prefix count]]
+                          [:span {:on-click #(do (swap! app-state assoc :text prefix)
+                                                 (trie/add-to-trie trie prefix))
+                                  :class "word"} (str prefix "(" (js/parseInt count) ")")])
+                        prefix-matches))))
 
 (defn last-word
   "Gets the last space separated token from text"
@@ -65,6 +69,7 @@
                     :value (:text data)}]]]))
 
 (defn render [data]
+  "Top level rendering function"
   (q/render (input-text data)
            (.getElementById js/document "input"))
   (q/render (display-output data)

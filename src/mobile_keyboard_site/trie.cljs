@@ -25,9 +25,12 @@
 (defn prefix-matches-confidence
   "Returns a list of match-confidence pairs"
   [trie prefix]
-  (filter (comp not nil?)
-          (map #(hash-map :val (:val %) :count (:count %))
-               (tree-seq map? vals (get-in trie prefix)))))
+  (let [branch (tree-seq map? vals (get-in trie prefix))
+        result   (filter (comp not nil?)
+                         (map #(if (nil? (:val %))
+                                 nil
+                                 (vector (:val %)(:count %))) branch))
+        ] result))
 
 (defn build-trie [coll]
   "Builds a trie over the values in the specified seq coll."
