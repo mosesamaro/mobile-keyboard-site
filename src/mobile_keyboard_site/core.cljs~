@@ -1,0 +1,57 @@
+(ns mobile-keyboard-site.core
+  (:require [figwheel.client :as fw]
+            [sablono.core :as html :refer-macros [html]]
+            [quiescent :as q :include-macros true]
+            [mobile-keyboard-site.trie :as trie]))
+
+(enable-console-print!)
+
+;; define your app data so that it doesn't get over-written on reload
+(defonce app-state (atom {:text "Hello World!"
+                          :prefix ""
+                          :trie {}}))
+
+(q/defcomponent Root
+  [data]
+  (html [:h1 (:text data)]))
+
+(defn word-list
+  [data]
+  (let [prefix (:prefix data)
+        trie   (:trie app-state)
+        prefix-matches (trie/prefix-matches-confidence trie prefix)]
+    (map (fn [prefix] [:span { :on-click #(trie/add-to-trie trie %)}]) prefix-matches)))
+
+(defn update-prefix
+  [prefix]
+  (swap! app-state assoc :prefix prefix))
+
+(defn key-press-handler
+  [data curr-letter contents]
+  (let [new-trie   (if (= (str curr-letter) " ")
+                     (add-to-trie (:trie data) contents)
+                     )]
+    (swap! app-state assoc :trie new-trie)))
+
+(q/defcomponent input-text
+  [data]
+  (html
+   [:div
+    [:div (word-list data)]
+    [:div  [:input {;;:type "textarea"
+                    :on-key-press #(update-prefix (str (.-value (.-target %)) (.-key %)))}]]]))
+
+(defn render [data]
+  (q/render (Root data)
+            (.getElementById js/document "app"))
+  (q/render (input-text data)
+           (.getElementById js/document "input")))
+
+(add-watch app-state ::render
+           (fn [_ _ _ data] (render data)))
+
+(add-watch app-state ::prefix
+           (fn [_ _ _ data] (print "Prefix is " (:prefix data))))
+
+(defonce start (render @app-state)) ;; initial render
+
